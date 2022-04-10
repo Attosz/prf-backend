@@ -8,19 +8,18 @@ const localStrategy = require('passport-local').Strategy
 
 const dbUrl = 'mongodb://localhost:27017'
 mongoose.connect(dbUrl)
-
 mongoose.connection.on('connected', () => { console.log('db connected') })
 mongoose.connection.on('error', (err) => { console.log('db error', err) })
 
-mongoose.model('aru', require('./models/arukereso.schema'))
+mongoose.model('product', require('./models/products.schema'))
+mongoose.model('oreder', require('./models/order.schema'))
 mongoose.model('user', require('./models/user.schema'))
 
 app.use(express.json())
 app.use(express.urlencoded({
     extended: true
 }))
-//ezzel a secrettel lesznek aláírva, hitelesítve a sütik, érdemes minél komplexebbet választani - vagyis nem ilyet, mint most én
-app.use(session({ secret: 'prf2022', resave: true }));
+app.use(session({ secret: 'jguzvtulJUZFTDuijgbZTCzugJNiutrxOIjoUGtufIOJoizfZTFukh', resave: true }));
 
 //definiáljuk a lokális stratégiát
 passport.use('local', new localStrategy(function (username, password, done) {
@@ -55,5 +54,5 @@ app.use('/', require('./routes'))
 app.use('/subrouter-pelda', require('./routes'))
 
 app.listen(3000, () => {
-    console.log('A szerver elindult')
+    console.log('Server launched')
 })

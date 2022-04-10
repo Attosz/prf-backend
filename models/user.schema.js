@@ -2,10 +2,11 @@ const mongoose = require('mongoose')
 const bcrypt = require('bcrypt') //ennek a segítségével állítunk elő jelszó hasht
 
 var userSchema = new mongoose.Schema({
-    username: { type: String, unique: true, required: true, lowercase: true },
-    password: { type: String, required: true },
-    email: { type: String, required: true },
-    accessLevel: { type: String }
+    username:       { type: String, unique: true, required: true, lowercase: true },
+    password:       { type: String, required: true },
+    email:          { type: String, required: true },
+    wallet:         { type: Number, default: 0 },
+    accessLevel:    { type: String }
 }, { collection: 'users' });
 
 userSchema.pre('save', function (next) { // a dokumentum bizonyos eseményei előtt
