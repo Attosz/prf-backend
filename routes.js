@@ -10,6 +10,9 @@ const passport = require('passport')
 // --- Products ---
 
 router.route('/products/:id?').get((req, res) => {
+    if (!req.isAuthenticated) {
+        return res.status(200).send("Login requiered");
+    }
     if (!req.params.id) {
         productModel.find((err, products) => {
             if (err) return res.status(500).send('DB error ' + err)
@@ -23,16 +26,18 @@ router.route('/products/:id?').get((req, res) => {
         })
     }
 }).post((req, res) => {
+    if (!req.isAuthenticated || req.user.accessLevel != "admin")
+        return res.status(403).send("Only admin can add products")
     if (!req.params.id || !req.body.price || !req.body.itemcount) {
         return res.status(400).send("Error: Requiered: name, price, itemcount")
     } else {
-        priceModel.findOne({ name: req.params.id }, (err, product) => {
+        productModel.findOne({ name: req.params.id }, (err, product) => {
             if (err) return res.status(500).send('DB error ' + err)
             if (product) return res.status(400).send('Product already defined under this name.')
-            const newProduct = new priceModel({
+            const newProduct = new productModel({
                 name: req.params.id,
-                darab: req.body.darab,
-                ar: req.body.ar
+                itemcount: req.body.itemcount,
+                price: req.body.price
             })
             newProduct.save((error) => {
                 if (error) return res.status(500).send('DB error during saving product ' + error)
@@ -41,26 +46,27 @@ router.route('/products/:id?').get((req, res) => {
         })
     }
 }).put((req, res) => {
+    if (!req.isAuthenticated || req.user.accessLevel != "admin")
+        return res.status(403).send("Only admin can alter products")
     if (!req.params.id || (!req.body.price && !req.body.itemcount)) {
         return res.status(400).send("Error: Requiered: name, and eiter price, itemcount)")
     } else {
-        productModel.findOne({ nev: req.params.id }, (err, aru) => {
+        productModel.findOne({ nev: req.params.id }, (err, product) => {
             if (err) return res.status(500).send('DB error ' + err)
             if (!product) return res.status(400).send('Product not found by name')
             if (req.body.price) product.price = req.body.price
-            if (req.body.itemcount) aru.itemcount = req.body.itemcount
+            if (req.body.itemcount) product.itemcount = req.body.itemcount
             product.save((error) => {
                 if (error) return res.status(500).send('DB error during saving product ' + error)
-                return res.status(200).send(aru)
+                return res.status(200).send(product)
             })
         })
     }
 }).delete((req, res) => {
+    if (!req.isAuthenticated || req.user.accessLevel != "admin")
+        return res.status(403).send("Only admin can delete products")
     if (!req.params.id) {
-        productModel.deleteMany((err) => {
-            if (err) return res.status(500).send('DB error ' + err)
-            return res.status(200).send('DELETED EVERYTHING')
-        })
+        return res.status(403).send('Cannot delet everything...')
     } else {
             productModel.deleteOne({ name: req.params.id }, (err) => {
             if (err) return res.status(500).send('DB error ' + err)
@@ -72,17 +78,28 @@ router.route('/products/:id?').get((req, res) => {
 // --- Users ---
 
 router.route('/users/:id?').get((req, res) => {
-    if (!req.params.id) {
-        userModel.find((err, users) => {
+    if (!req.isAuthenticated) {
+        return res.status(403).send("Login requiered");
+    }
+    if (req.user.accessLevel != "admin") {
+        userModel.findOne({ username: req.user.username }, (err, user) => {
             if (err) return res.status(500).send('DB error: ' + err)
-            return res.status(200).send(users)
-        })
-    } else {
-        userModel.findOne({ nev: req.params.id }, (err, user) => {
-            if (err) return res.status(500).send('DB error: ' + err)
-            if (!user) return res.status(400).send('No user found by name!')
+            if (!user) return res.status(400).send('Information not found!')
             return res.status(200).send(user)
         })
+    } else {
+        if (!req.params.id) {
+            userModel.find((err, users) => {
+                if (err) return res.status(500).send('DB error: ' + err)
+                return res.status(200).send(users)
+            })
+        } else {
+            userModel.findOne({ username: req.params.id }, (err, user) => {
+                if (err) return res.status(500).send('DB error: ' + err)
+                if (!user) return res.status(400).send('No user found by name!')
+                return res.status(200).send(user)
+            })
+        }
     }
 }).post((req, res) => {
     if (!req.params.id || !req.body.password || !req.body.email) {
@@ -103,7 +120,10 @@ router.route('/users/:id?').get((req, res) => {
         })
     }
 }).put((req, res) => {
-    if (!req.params.id || (!req.body.password && !req.body.email)) {
+    if (!req.isAuthenticated) {
+        return res.status(403).send("Login requiered");
+    }
+    if (!req.params.id || (!req.body.password && !req.body.email && !req.body.wallet && !req.body.accessLevel)) {
         return res.status(400).send("Hiányos input!")
     } else {
         userModel.findOne({ username: req.params.id }, (err, user) => {
@@ -111,6 +131,9 @@ router.route('/users/:id?').get((req, res) => {
             if (!user) return res.status(400).send('User was not created before!')
             if (req.body.password) user.password = req.body.password
             if (req.body.email) user.email = req.body.email
+            if (req.body.wallet) user.wallet = req.body.wallet
+            if (req.body.accessLevel && req.user.accessLevel == "admin")
+                user.accessLevel = req.body.accessLevel
             user.save((error) => {
                 if (error) return res.status(500).send('DB error during saving: ' + error)
                 return res.status(200).send(user)
@@ -118,6 +141,12 @@ router.route('/users/:id?').get((req, res) => {
         })
     }
 }).delete((req, res) => {
+    if (!req.isAuthenticated) {
+        return res.status(403).send("Login requiered");
+    }
+    if (req.user.accessLevel != "admin") {
+        return res.status(403).send("Forbidden");
+    }
     if (req.params.id) {
         userModel.deleteOne({ username: req.params.id }, (err) => {
             if (err) return res.status(500).send('DB error ' + err)
@@ -129,72 +158,147 @@ router.route('/users/:id?').get((req, res) => {
 })
 
 // --- Orders ---
-//TODO: implement properly
-router.route('/orders/:id?').get((req, res) => {
-    if (req.user == null) {
-        
+
+router.route('/orders/:id?').get((req, res) => { 
+    if (!req.isAuthenticated) {
+        return res.status(403).send("Login requiered");
+    }
+    if (!req.params.id) {
+        if (req.user.accessLevel == 'admin') {
+            orderModel.find((err, orders) => {
+                if (err) return res.status(500).send('DB error ' + err)
+                if (!orders) return res.status(400).send('No order was found.')
+                return res.status(200).send(orders)
+            })
+        } else {
+            orderModel.find({username: req.user.username}, (err, orders) => {
+                if (err) return res.status(500).send('DB error ' + err)
+                if (!orders) return res.status(400).send('No order was found under this user.')
+                return res.status(200).send(orders)
+            })
+        }
     } else {
-        orderModel.find({username: req.user.username}, (err, orders) => {
-            if (err) return res.status(500).send('DB error ' + err)
-            if (!orders) return res.status(400).send('No order was found under this user.')
-            return res.status(200).send(orders)
+        const tmpId = mongoose.Types.ObjectId(req.params.id);
+        console.log(tmpId)
+        orderModel.findById(tmpId, (err, order) => {
+            if (err) return res.status(500).send('DB error: ' + err)
+            if (!order) return res.status(400).send('Order was not found.')
+            if (req.user.username != order.username && req.user.accessLevel != 'admin') {
+                return res.status(403).send('You have no permission to view this order.')
+            }
+            return res.status(200).send(order)
         })
     }
+
 }).post((req, res) => {
-    if (!req.params.id || !req.body.price || !req.body.itemcount) {
-        return res.status(400).send("Error: Requiered: name, price, itemcount")
-    } else {
-        orderModel.findOne({ name: req.params.id }, (err, product) => {
+    if (!req.isAuthenticated) {
+        return res.status(403).send("Login requiered");
+    }
+    if (!req.body.productname || !req.body.itemcount) {
+        return res.status(400).send('No Product name, itemcount was not defined for order.')
+    }
+    //Get product itemcount
+    productModel.findOne({name: req.body.productname}, (err, product) => {
+        if (err)
+            return res.status(500).send('DB error ' + err)
+        if (!product)
+            return res.status(400).send('Product not found!')
+        if (product.itemcount < req.body.itemcount)
+            return res.status(400).send('Not enough product available at the moment.')
+            if (req.body.itemcount < 1)
+            return res.status(400).send('Product not available anymore')
+
+        //Find user and get presen wallet
+        userModel.findOne({username: req.user.username}, (err, user) => {
             if (err) return res.status(500).send('DB error ' + err)
-            if (product) return res.status(400).send('Product already defined under this name.')
-            const newOrder = new priceModel({
-                name: req.params.id,
-                darab: req.body.darab,
-                ar: req.body.ar
+            if (!user) return res.status(400).send('User not found')
+            if (user.wallet < product.price * req.body.itemcount) {
+                return res.status(400).send('Not enough currency at your wallet for order')
+            }
+
+            //Make order
+            const newOrder = new orderModel({
+                username: req.user.username,
+                productname: req.body.productname,
+                itemcount: req.body.itemcount,
+                status: "Order submitted",
+                iscompleated: false
             })
             newOrder.save((error) => {
                 if (error) return res.status(500).send('DB error during saving product ' + error)
-                return res.status(200).send(req.body)
             })
-        })
-    }
-}).put((req, res) => {
-    if (!req.params.id || (!req.body.price && !req.body.itemcount)) {
-        return res.status(400).send("Error: Requiered: name, and eiter price, itemcount)")
-    } else {
-        productModel.findOne({ nev: req.params.id }, (err, aru) => {
-            if (err) return res.status(500).send('DB error ' + err)
-            if (!product) return res.status(400).send('Product not found by name')
-            if (req.body.price) product.price = req.body.price
-            if (req.body.itemcount) aru.itemcount = req.body.itemcount
+
+            //Save product itemcount update
+            product.itemcount -= req.body.itemcount
             product.save((error) => {
-                if (error) return res.status(500).send('DB error during saving product ' + error)
-                return res.status(200).send(aru)
+                if (error) return res.status(500).send('DB error during updating product count ' + error)
+            })
+
+            //Save user wallet update
+            user.wallet -= product.price * req.body.itemcount
+            user.save((error) => {
+                if (error) return res.status(500).send('DB error during updating user wallet ' + error)
+            })
+
+            //Succes
+            return res.status(200).send('Order succesfully made\n' + newOrder)
+        })
+    })
+}).put((req, res) => {
+    if (!req.isAuthenticated)
+        return res.status(403).send("Login requiered")
+    if (req.user.accessLevel != "admin")
+        return res.status(403).send('You should not be here!')
+    if (!req.params.id) {
+        return res.status(400).send('For updating order ID is a must.') 
+    }
+    orderModel.findById(mongoose.Types.ObjectId(req.params.id), (err, order) => {
+        if (err) return res.status(500).send('DB error: ' + err) 
+        if (!order) return res.status(400).send('Order not found!')
+        if (!req.body.status) return res.status(400).send('Status needs to be defined')
+        order.status = req.body.status
+        if (req.body.status == 'Done') order.iscompleated = true;
+        order.save((error) => {
+            if (error) return res.status(500).send('DB error during saving: ' + error)
+            return res.status(200).send(order)
+        })
+    })
+}).delete((req, res) => {
+    if (!req.isAuthenticated)
+        return res.status(403).send("Login requiered");
+    if (req.user.accessLevel != "admin")
+        return res.status(403).send('You should not be here!')
+    if (!req.params.id)
+        return res.status(404).send('Do not delete all orders...')
+
+    orderModel.findById(req.params.id, (err, order) => {
+        if (err) return res.status(500).send('DB error: ' + err) 
+        if (!order) return res.status(400).send('Order not found!')
+        order.delete((error) => {
+            if (error) return res.status(500).send('DB error during saving: ' + error)
+        })
+        if (order.iscompleated) return res.status(200).send("Deletion compleated!")
+        productModel.findOne({name: order.productname}, (err, product) => {
+            if (err)
+                return res.status(500).send('DB error ' + err)
+            if (!product)
+                return res.status(400).send('Product not found!')
+            product.itemcount += order.itemcount
+            product.save((error) => {
+                if (error) return res.status(500).send('DB error during updating product count ' + error)
             })
         })
-    }
-}).delete((req, res) => {
-    if (req.params.id) {
-        orderModel.deleteOne({ username: req.params.id }, (err) => {
-            if (err) return res.status(500).send('DB error ' + err)
-            return res.status(200).send('User deleted from database')
-        })
-    } else {
-        return res.status(403).send('Do not delete all orders')
-    }
+        return res.status(200).send("Deletion compleated!")
+    })
 })
 
 // --- LOGIN ---
 
 router.route('/login').post((req, res, next) => {
     if (req.body.username, req.body.password) {
-        //meghívom a passport local stratégiáját és paraméterként átadom neki a req,res objektumokat
-        passport.authenticate('local', function (error, user) {
-            console.log('login eredménye:',user)
+        passport.authenticate('local', { failureRedirect: '/login' }, function (error, user) {
             if (error) return res.status(500).send(error);
-            // ezzel léptetem bele a sessionbe a felhasználót, a user objektumot utána mindig el tudom majd érni
-            // req.user néven
-            req.logIn(user, function (error) {
+            req.login(user, function (error) {
                 if (error) return res.status(500).send(error);
                 return res.status(200).send('Bejelentkezes sikeres');
             })
@@ -205,10 +309,7 @@ router.route('/login').post((req, res, next) => {
 // --- LOGOUT ---
 
 router.route('/logout').post((req, res, next) => {
-    console.log('user:', req.user)
-    // ha volt sikeres login és sikerült sessionbe léptetni a usert, akkor a session megszüntetéséig
-    // vagyis logoutig ez az isAuthenticated() mindig true lesz majd
-    if (req.isAuthenticated()) {
+    if (req.isAuthenticated) {
         req.logout(); // megszünteti a sessiont
         return res.status(200).send('Kijelentkezes sikeres');
     } else {

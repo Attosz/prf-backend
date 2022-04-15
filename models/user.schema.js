@@ -1,5 +1,5 @@
 const mongoose = require('mongoose')
-const bcrypt = require('bcrypt') //ennek a segítségével állítunk elő jelszó hasht
+const bcrypt = require('bcrypt')
 
 var userSchema = new mongoose.Schema({
     username:       { type: String, unique: true, required: true, lowercase: true },
@@ -9,8 +9,8 @@ var userSchema = new mongoose.Schema({
     accessLevel:    { type: String }
 }, { collection: 'users' });
 
-userSchema.pre('save', function (next) { // a dokumentum bizonyos eseményei előtt
-    const user = this; // különböző műveleteket kódolhatunk le
+userSchema.pre('save', function (next) {
+    const user = this;
     if (user.isModified('password')) {
         user.accessLevel = 'basic';
         bcrypt.genSalt(10, function (err, salt) {
@@ -31,8 +31,7 @@ userSchema.pre('save', function (next) { // a dokumentum bizonyos eseményei el�
 userSchema.methods.comparePasswords = function (password, nx) {
     bcrypt.compare(password, this.password, function (err, isMatch) {
         nx(err, isMatch);
-    }); // hasheli a kapott jelszót is és csak a hasheket hasonlítja össze
-}; // minden létrehozott és lekérdezett objektum a users kollekcióból rendelkezni fog ezzel a beépített metódussal
-
+    });
+}; 
 
 module.exports = userSchema

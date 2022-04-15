@@ -12,19 +12,19 @@ mongoose.connection.on('connected', () => { console.log('db connected') })
 mongoose.connection.on('error', (err) => { console.log('db error', err) })
 
 mongoose.model('product', require('./models/products.schema'))
-mongoose.model('oreder', require('./models/order.schema'))
+mongoose.model('order', require('./models/order.schema'))
 mongoose.model('user', require('./models/user.schema'))
 
 app.use(express.json())
 app.use(express.urlencoded({
     extended: true
 }))
-app.use(session({ secret: 'jguzvtulJUZFTDuijgbZTCzugJNiutrxOIjoUGtufIOJoizfZTFukh', resave: true }));
+app.use(passport.initialize());
+app.use(session({ secret: 'jguzvtulJUZFTDuijgbZTCzugJNiutrxOIjoUGtufIOJoizfZTFukh', resave: true, saveUninitialized: true}));
+app.use(passport.session());
 
-//definiáljuk a lokális stratégiát
 passport.use('local', new localStrategy(function (username, password, done) {
     const userModel = mongoose.model('user')
-    //a passport hacsak nem rendelkezünk másképp, a req.body.username és a req.body.password mezőket keresi majd
     userModel.findOne({ username: username }, function (err, user) {
         if (err) return done('Hiba lekeres soran', null);
         if (!user) return done('Nincs ilyen felhasználónév', null);
