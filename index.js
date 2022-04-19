@@ -27,10 +27,10 @@ const whitelist = "http://localhost:4200"
 
 app.use((req, res, next) => {
     res.set("Access-Control-Allow-Origin", whitelist)
-    res.set("Access-Control-Allow-Creditentials", "true")
+    res.set("Access-Control-Allow-Credentials", "true")
     if (req.method === "OPTIONS") {
         res.set("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE")
-        res.set("Access-Control-Allow-Headers", "Content-Type")
+        res.set("Access-Control-Allow-Headers", "Content-Type,X-Auth-Token,Origin")
         res.set("Access-Control-Max-Age", "3600")
     }
     next()
