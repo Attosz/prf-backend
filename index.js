@@ -23,6 +23,19 @@ app.use(passport.initialize());
 app.use(session({ secret: 'jguzvtulJUZFTDuijgbZTCzugJNiutrxOIjoUGtufIOJoizfZTFukh', resave: true, saveUninitialized: true}));
 app.use(passport.session());
 
+const whitelist = "http://localhost:4200"
+
+app.use((req, res, next) => {
+    res.set("Access-Control-Allow-Origin", whitelist)
+    res.set("Access-Control-Allow-Creditentials", "true")
+    if (req.method === "OPTIONS") {
+        res.set("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE")
+        res.set("Access-Control-Allow-Headers", "Content-Type")
+        res.set("Access-Control-Max-Age", "3600")
+    }
+    next()
+})
+
 passport.use('local', new localStrategy(function (username, password, done) {
     const userModel = mongoose.model('user')
     userModel.findOne({ username: username }, function (err, user) {
@@ -48,7 +61,6 @@ passport.deserializeUser(function (user, done) {
     if (!user) return done("nincs user akit kiléptethetnénk", null);
     return done(null, user);
 });
-
 
 app.use('/', require('./routes'))
 app.use('/subrouter-pelda', require('./routes'))

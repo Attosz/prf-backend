@@ -10,8 +10,8 @@ const passport = require('passport')
 // --- Products ---
 
 router.route('/products/:id?').get((req, res) => {
-    if (!req.isAuthenticated) {
-        return res.status(200).send("Login requiered");
+    if (!req.isAuthenticated()) {
+        return res.status(403).send("{Login requiered}");
     }
     if (!req.params.id) {
         productModel.find((err, products) => {
@@ -26,7 +26,7 @@ router.route('/products/:id?').get((req, res) => {
         })
     }
 }).post((req, res) => {
-    if (!req.isAuthenticated || req.user.accessLevel != "admin")
+    if (!req.isAuthenticated() || req.user.accessLevel != "admin")
         return res.status(403).send("Only admin can add products")
     if (!req.params.id || !req.body.price || !req.body.itemcount) {
         return res.status(400).send("Error: Requiered: name, price, itemcount")
@@ -46,7 +46,7 @@ router.route('/products/:id?').get((req, res) => {
         })
     }
 }).put((req, res) => {
-    if (!req.isAuthenticated || req.user.accessLevel != "admin")
+    if (!req.isAuthenticated() || req.user.accessLevel != "admin")
         return res.status(403).send("Only admin can alter products")
     if (!req.params.id || (!req.body.price && !req.body.itemcount)) {
         return res.status(400).send("Error: Requiered: name, and eiter price, itemcount)")
@@ -63,7 +63,7 @@ router.route('/products/:id?').get((req, res) => {
         })
     }
 }).delete((req, res) => {
-    if (!req.isAuthenticated || req.user.accessLevel != "admin")
+    if (!req.isAuthenticated() || req.user.accessLevel != "admin")
         return res.status(403).send("Only admin can delete products")
     if (!req.params.id) {
         return res.status(403).send('Cannot delet everything...')
@@ -78,7 +78,7 @@ router.route('/products/:id?').get((req, res) => {
 // --- Users ---
 
 router.route('/users/:id?').get((req, res) => {
-    if (!req.isAuthenticated) {
+    if (!req.isAuthenticated()) {
         return res.status(403).send("Login requiered");
     }
     if (req.user.accessLevel != "admin") {
@@ -120,7 +120,7 @@ router.route('/users/:id?').get((req, res) => {
         })
     }
 }).put((req, res) => {
-    if (!req.isAuthenticated) {
+    if (!req.isAuthenticated()) {
         return res.status(403).send("Login requiered");
     }
     if (!req.params.id || (!req.body.password && !req.body.email && !req.body.wallet && !req.body.accessLevel)) {
@@ -141,7 +141,7 @@ router.route('/users/:id?').get((req, res) => {
         })
     }
 }).delete((req, res) => {
-    if (!req.isAuthenticated) {
+    if (!req.isAuthenticated()) {
         return res.status(403).send("Login requiered");
     }
     if (req.user.accessLevel != "admin") {
@@ -191,7 +191,7 @@ router.route('/orders/:id?').get((req, res) => {
     }
 
 }).post((req, res) => {
-    if (!req.isAuthenticated) {
+    if (!req.isAuthenticated()) {
         return res.status(403).send("Login requiered");
     }
     if (!req.body.productname || !req.body.itemcount) {
@@ -245,7 +245,7 @@ router.route('/orders/:id?').get((req, res) => {
         })
     })
 }).put((req, res) => {
-    if (!req.isAuthenticated)
+    if (!req.isAuthenticated())
         return res.status(403).send("Login requiered")
     if (req.user.accessLevel != "admin")
         return res.status(403).send('You should not be here!')
@@ -264,7 +264,7 @@ router.route('/orders/:id?').get((req, res) => {
         })
     })
 }).delete((req, res) => {
-    if (!req.isAuthenticated)
+    if (!req.isAuthenticated())
         return res.status(403).send("Login requiered");
     if (req.user.accessLevel != "admin")
         return res.status(403).send('You should not be here!')
@@ -309,7 +309,7 @@ router.route('/login').post((req, res, next) => {
 // --- LOGOUT ---
 
 router.route('/logout').post((req, res, next) => {
-    if (req.isAuthenticated) {
+    if (req.isAuthenticated()) {
         req.logout(); // megszünteti a sessiont
         return res.status(200).send('Kijelentkezes sikeres');
     } else {
