@@ -11,7 +11,7 @@ const passport = require('passport')
 
 router.route('/products/:id?').get((req, res) => {
     if (!req.isAuthenticated()) {
-        return res.status(403).send("{Login requiered}");
+        return res.status(403).send("Login requiered");
     }
     if (!req.params.id) {
         productModel.find((err, products) => {
@@ -34,6 +34,8 @@ router.route('/products/:id?').get((req, res) => {
         productModel.findOne({ name: req.params.id }, (err, product) => {
             if (err) return res.status(500).send('DB error ' + err)
             if (product) return res.status(400).send('Product already defined under this name.')
+            if (req.body.price <= 0) return res.status(400).send('Price count must be more than 0')
+            if (req.body.itemcount <= 0) return res.status(400).send('Item count must be more than 0')
             const newProduct = new productModel({
                 name: req.params.id,
                 itemcount: req.body.itemcount,
@@ -51,14 +53,14 @@ router.route('/products/:id?').get((req, res) => {
     if (!req.params.id || (!req.body.price && !req.body.itemcount)) {
         return res.status(400).send("Error: Requiered: name, and eiter price, itemcount)")
     } else {
-        productModel.findOne({ nev: req.params.id }, (err, product) => {
+        productModel.findOne({ name: req.params.id }, (err, product) => {
             if (err) return res.status(500).send('DB error ' + err)
             if (!product) return res.status(400).send('Product not found by name')
             if (req.body.price) product.price = req.body.price
             if (req.body.itemcount) product.itemcount = req.body.itemcount
             product.save((error) => {
                 if (error) return res.status(500).send('DB error during saving product ' + error)
-                return res.status(200).send(product)
+                else return res.status(200).send(product)
             })
         })
     }
@@ -81,24 +83,21 @@ router.route('/users/:id?').get((req, res) => {
     if (!req.isAuthenticated()) {
         return res.status(403).send("Login requiered");
     }
-    if (req.user.accessLevel != "admin") {
+    if (!req.params.id) {
         userModel.findOne({ username: req.user.username }, (err, user) => {
             if (err) return res.status(500).send('DB error: ' + err)
             if (!user) return res.status(400).send('Information not found!')
             return res.status(200).send(user)
         })
     } else {
-        if (!req.params.id) {
-            userModel.find((err, users) => {
-                if (err) return res.status(500).send('DB error: ' + err)
-                return res.status(200).send(users)
-            })
-        } else {
+        if (req.user.accessLevel == 'admin') {
             userModel.findOne({ username: req.params.id }, (err, user) => {
                 if (err) return res.status(500).send('DB error: ' + err)
                 if (!user) return res.status(400).send('No user found by name!')
                 return res.status(200).send(user)
             })
+        } else {
+            return res.status(401).send("Can't view other users profile")
         }
     }
 }).post((req, res) => {
@@ -157,10 +156,21 @@ router.route('/users/:id?').get((req, res) => {
     }
 })
 
+router.route('/allusers/:id?').get((req, res) => {
+    if (!req.isAuthenticated() || req.user.accessLevel != "admin") {
+        return res.status(403).send("Only admin territories!");
+    } else {
+        userModel.find((err, users) => {
+            if (err) return res.status(500).send('DB error: ' + err)
+            return res.status(200).send(users)
+        })
+    }
+})
+
 // --- Orders ---
 
 router.route('/orders/:id?').get((req, res) => { 
-    if (!req.isAuthenticated) {
+    if (!req.isAuthenticated()) {
         return res.status(403).send("Login requiered");
     }
     if (!req.params.id) {
@@ -179,7 +189,6 @@ router.route('/orders/:id?').get((req, res) => {
         }
     } else {
         const tmpId = mongoose.Types.ObjectId(req.params.id);
-        console.log(tmpId)
         orderModel.findById(tmpId, (err, order) => {
             if (err) return res.status(500).send('DB error: ' + err)
             if (!order) return res.status(400).send('Order was not found.')
@@ -273,22 +282,27 @@ router.route('/orders/:id?').get((req, res) => {
 
     orderModel.findById(req.params.id, (err, order) => {
         if (err) return res.status(500).send('DB error: ' + err) 
-        if (!order) return res.status(400).send('Order not found!')
-        order.delete((error) => {
-            if (error) return res.status(500).send('DB error during saving: ' + error)
-        })
-        if (order.iscompleated) return res.status(200).send("Deletion compleated!")
-        productModel.findOne({name: order.productname}, (err, product) => {
-            if (err)
-                return res.status(500).send('DB error ' + err)
-            if (!product)
-                return res.status(400).send('Product not found!')
-            product.itemcount += order.itemcount
-            product.save((error) => {
-                if (error) return res.status(500).send('DB error during updating product count ' + error)
+        else if (!order) return res.status(400).send('Order not found!')
+        else {
+            order.delete((error) => {
+                if (error) return res.status(500).send('DB error during saving: ' + error)
             })
-        })
-        return res.status(200).send("Deletion compleated!")
+            if (order.iscompleated) {
+                return res.status(200).send("Deletion compleated!")
+            } else {
+                productModel.findOne({name: order.productname}, (err, product) => {
+                    if (err)
+                        return res.status(500).send('DB error ' + err)
+                    if (!product)
+                        return res.status(400).send('Product not found!')
+                    product.itemcount += order.itemcount
+                    product.save((error) => {
+                        if (error) return res.status(500).send('DB error during updating product count ' + error)
+                    })
+                })
+                return res.status(200).send("Deletion compleated!")
+            }
+        }
     })
 })
 
@@ -298,7 +312,7 @@ router.route('/login').post((req, res, next) => {
     if (req.body.username, req.body.password) {
         passport.authenticate('local', { failureRedirect: '/login' }, function (error, user) {
             if (error) return res.status(500).send(error);
-            req.login(user, function (error) {
+            req.logIn(user, function (error) {
                 if (error) return res.status(500).send(error);
                 return res.status(200).send('Bejelentkezes sikeres');
             })
@@ -310,7 +324,7 @@ router.route('/login').post((req, res, next) => {
 
 router.route('/logout').post((req, res, next) => {
     if (req.isAuthenticated()) {
-        req.logout(); // megszünteti a sessiont
+        req.logOut(); // megszünteti a sessiont
         return res.status(200).send('Kijelentkezes sikeres');
     } else {
         return res.status(403).send('Nem is volt bejelentkezve');
