@@ -156,7 +156,7 @@ router.route('/users/:id?').get((req, res) => {
     }
 })
 
-router.route('/allusers/:id?').get((req, res) => {
+router.route('/allusers').get((req, res) => {
     if (!req.isAuthenticated() || req.user.accessLevel != "admin") {
         return res.status(403).send("Only admin territories!");
     } else {
@@ -214,8 +214,8 @@ router.route('/orders/:id?').get((req, res) => {
             return res.status(400).send('Product not found!')
         if (product.itemcount < req.body.itemcount)
             return res.status(400).send('Not enough product available at the moment.')
-            if (req.body.itemcount < 1)
-            return res.status(400).send('Product not available anymore')
+        if (req.body.itemcount < 1)
+            return res.status(400).send('Have to order at least 1')
 
         //Find user and get presen wallet
         userModel.findOne({username: req.user.username}, (err, user) => {
@@ -250,7 +250,7 @@ router.route('/orders/:id?').get((req, res) => {
             })
 
             //Succes
-            return res.status(200).send('Order succesfully made\n' + newOrder)
+            return res.status(200).send(newOrder)
         })
     })
 }).put((req, res) => {
