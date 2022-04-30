@@ -1,5 +1,6 @@
 const express = require('express')
 const mongoose = require('mongoose')
+const path = require('path')
 const app = express()
 
 const session = require('express-session')
@@ -25,6 +26,11 @@ app.use(express.urlencoded({
 app.use(passport.initialize());
 app.use(session({ secret: 'jguzvtulJUZFTDuijgbZTCzugJNiutrxOIjoUGtufIOJoizfZTFukh', resave: true, saveUninitialized: true}));
 app.use(passport.session());
+
+app.use(express.static(path.join(__dirname, 'frontend/build')))
+.set('views', path.join(__dirname, 'views'))
+.set('view engine', 'ejs')
+.get('/', (req, res) => res.render(pages.index))
 
 const whitelist = "http://localhost:4200"
 
