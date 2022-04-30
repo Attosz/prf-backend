@@ -6,7 +6,9 @@ const session = require('express-session')
 const passport = require('passport')
 const localStrategy = require('passport-local').Strategy
 
-const dbUrl = 'mongodb://localhost:27017'
+//const dbUrl = 'mongodb://localhost:27017'
+const dbUrl = 'mongodb+srv://admin:'+ process.env.DBPASS +'@prf-db.rf4hu.mongodb.net/myFirstDatabase?retryWrites=true&w=majority'
+
 mongoose.connect(dbUrl)
 mongoose.connection.on('connected', () => { console.log('db connected') })
 mongoose.connection.on('error', (err) => { console.log('db error', err) })
