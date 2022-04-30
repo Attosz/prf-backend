@@ -6,6 +6,7 @@ const session = require('express-session')
 const passport = require('passport')
 const localStrategy = require('passport-local').Strategy
 
+const envPort = process.env.PORT || 3000
 //const dbUrl = 'mongodb://localhost:27017'
 const dbUrl = 'mongodb+srv://admin:'+ process.env.DBPASS +'@prf-db.rf4hu.mongodb.net/myFirstDatabase?retryWrites=true&w=majority'
 
@@ -67,6 +68,6 @@ passport.deserializeUser(function (user, done) {
 app.use('/', require('./routes'))
 app.use('/subrouter-pelda', require('./routes'))
 
-app.listen(3000, () => {
+app.listen(envPort, () => {
     console.log('Server launched')
 })
